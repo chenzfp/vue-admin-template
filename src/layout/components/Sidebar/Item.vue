@@ -19,6 +19,8 @@ export default {
     if (icon) {
       if (icon.includes('el-icon')) {
         vnodes.push(<i class={[icon, 'sub-el-icon']} />)
+      } else if (icon.includes('icon-')) {
+        vnodes.push(<i class={['iconfont', icon, 'sub-el-icon']} />)
       } else {
         vnodes.push(<svg-icon icon-class={icon}/>)
       }
@@ -37,5 +39,12 @@ export default {
   color: currentColor;
   width: 1em;
   height: 1em;
+}
+.iconfont {
+  font-family: "iconfont", serif !important;
+  font-size: 18px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 </style>

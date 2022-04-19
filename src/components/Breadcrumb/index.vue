@@ -1,9 +1,9 @@
 <template>
   <el-breadcrumb class="app-breadcrumb" separator="/">
     <transition-group name="breadcrumb">
-      <el-breadcrumb-item v-for="(item,index) in levelList" :key="item.path">
-        <span v-if="item.redirect==='noRedirect'||index==levelList.length-1" class="no-redirect">{{ item.meta.title }}</span>
-        <a v-else @click.prevent="handleLink(item)">{{ item.meta.title }}</a>
+      <el-breadcrumb-item v-for="(item,index) in menuList" :key="item.path">
+        <span :key="index + ''" :class="{ 'no-redirect': item.path }" @click="goto(item.path)">{{ item.name }}</span>
+        <!--<a v-else @click.prevent="handleLink(item)">{{ item.name }}</a>-->
       </el-breadcrumb-item>
     </transition-group>
   </el-breadcrumb>
@@ -15,19 +15,23 @@ import pathToRegexp from 'path-to-regexp'
 export default {
   data() {
     return {
-      levelList: null
+      levelList: null,
+      menuList: []
     }
   },
   watch: {
     $route() {
-      this.getBreadcrumb()
+      this.getBreadcrumb1()
     }
   },
   created() {
-    this.getBreadcrumb()
+    this.getBreadcrumb1()
   },
   methods: {
-    getBreadcrumb() {
+    async getBreadcrumb1() {
+      this.menuList = this.getMenuList()
+    },
+    async getBreadcrumb() {
       // only show routes with meta.title
       let matched = this.$route.matched.filter(item => item.meta && item.meta.title)
       const first = matched[0]
@@ -52,12 +56,51 @@ export default {
       return toPath(params)
     },
     handleLink(item) {
-      const { redirect, path } = item
-      if (redirect) {
+      const { path } = item
+      /* if (redirect) {
         this.$router.push(redirect)
         return
-      }
+      }*/
       this.$router.push(this.pathCompile(path))
+    },
+    getMenuList() {
+      const jsonDate = sessionStorage.getItem('menuData')
+      const arrData = JSON.parse(jsonDate)
+
+      let arrRes = [] // 存储所有的父级元素
+      const rev = (data, path) => {
+        for (var i = 0, length = data.length; i < length; i++) {
+          const node = data[i]
+          arrRes.push({
+            name: node.menuName,
+            path: node.pageUrl
+          })
+          if (node.pageUrl === path) {
+            arrRes.push({
+              name: node.menuName,
+              path: node.pageUrl
+            })
+            break
+          } else {
+            if (node.childMenuList && node.childMenuList.length) {
+              rev(node.childMenuList, path)
+            }
+            arrRes.pop()
+          }
+        }
+        return arrRes
+      }
+      arrRes = rev(arrData, this.$route.path)
+      return arrRes
+    },
+    // 路由跳转
+    goto(path = '') {
+      if (path) {
+        this.$route.push({
+          path: path,
+          query: {}
+        })
+      }
     }
   }
 }
@@ -74,5 +117,8 @@ export default {
     color: #97a8be;
     cursor: text;
   }
+}
+.enable-click {
+  cursor: pointer;
 }
 </style>

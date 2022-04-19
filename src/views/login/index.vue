@@ -13,7 +13,7 @@
         <el-input
           ref="username"
           v-model="loginForm.username"
-          placeholder="Username"
+          placeholder="请输入账号"
           name="username"
           type="text"
           tabindex="1"
@@ -30,23 +30,39 @@
           ref="password"
           v-model="loginForm.password"
           :type="passwordType"
-          placeholder="Password"
+          placeholder="请输入密码"
           name="password"
           tabindex="2"
           auto-complete="on"
-          @keyup.enter.native="handleLogin"
         />
         <span class="show-pwd" @click="showPwd">
           <svg-icon :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'" />
         </span>
       </el-form-item>
 
+      <el-form-item prop="verifyCode">
+        <el-input
+          ref="verifyCode"
+          v-model="loginForm.verifyCode"
+          placeholder="请输入验证码"
+          name="verifyCode"
+          tabindex="3"
+          auto-complete="on"
+          style="width: 300px"
+          @keyup.enter.native="handleLogin"
+        />
+        <img
+          :src="verifyCodeUrl"
+          class="verify-code"
+          @click="refreshVerifyCode"/>
+      </el-form-item>
+
       <el-button :loading="loading" type="primary" style="width:100%;margin-bottom:30px;" @click.native.prevent="handleLogin">Login</el-button>
 
-      <div class="tips">
+      <!--<div class="tips">
         <span style="margin-right:20px;">username: admin</span>
         <span> password: any</span>
-      </div>
+      </div>-->
 
     </el-form>
   </div>
@@ -54,32 +70,40 @@
 
 <script>
 import { validUsername } from '@/utils/validate'
+import { menuApi } from '@/api/menu'
+import { STATUS_OK } from '@/api/config'
 
 export default {
   name: 'Login',
   data() {
     const validateUsername = (rule, value, callback) => {
       if (!validUsername(value)) {
-        callback(new Error('Please enter the correct user name'))
+        callback(new Error('请输入用户名'))
       } else {
         callback()
       }
     }
     const validatePassword = (rule, value, callback) => {
       if (value.length < 6) {
-        callback(new Error('The password can not be less than 6 digits'))
+        callback(new Error('请输入密码'))
       } else {
         callback()
       }
     }
     return {
+      moduleId: 6, // 默认隐私计算Fate组件系统Id
+      randomCode: 0,
+      verifyCodeUrl: '',
       loginForm: {
         username: 'admin',
-        password: '111111'
+        password: 'Expos@2021',
+        verifyCode: '',
+        deviceId: 0
       },
       loginRules: {
         username: [{ required: true, trigger: 'blur', validator: validateUsername }],
-        password: [{ required: true, trigger: 'blur', validator: validatePassword }]
+        password: [{ required: true, trigger: 'blur', validator: validatePassword }],
+        verifyCode: [{ required: true, trigger: 'blur' }]
       },
       loading: false,
       passwordType: 'password',
@@ -93,6 +117,9 @@ export default {
       },
       immediate: true
     }
+  },
+  created() {
+    this.refreshVerifyCode()
   },
   methods: {
     showPwd() {
@@ -109,17 +136,28 @@ export default {
       this.$refs.loginForm.validate(valid => {
         if (valid) {
           this.loading = true
-          this.$store.dispatch('user/login', this.loginForm).then(() => {
+          this.loginForm.deviceId = this.randomCode
+          this.$store.dispatch('user/login', this.loginForm).then(async() => {
+            menuApi.getMenuTreeByCurrentSystem(this.moduleId).then((res) => {
+              if (res.code === STATUS_OK) {
+                sessionStorage.setItem('menuData', JSON.stringify(res.data))
+              }
+            })
+          }).then(() => {
             this.$router.push({ path: this.redirect || '/' })
             this.loading = false
           }).catch(() => {
+            this.refreshVerifyCode()
             this.loading = false
           })
         } else {
-          console.log('error submit!!')
           return false
         }
       })
+    },
+    refreshVerifyCode() {
+      this.randomCode = Math.random()
+      this.verifyCodeUrl = this.$baseURL + '/sso/createKaptcha?randomCode=' + this.randomCode
     }
   }
 }
@@ -233,5 +271,12 @@ $light_gray:#eee;
     cursor: pointer;
     user-select: none;
   }
+}
+.verify-code {
+  width: 120px;
+  height: 46px;
+  text-align: right;
+  float: right;
+  background: rgba(0, 121, 254, 0.2);
 }
 </style>
